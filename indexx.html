@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An interactive Hangman word-guessing game with difficulty levels, hints, and statistics tracking">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hangman Game">
+    
+    <title>Hangman Game - Interactive Word Guessing Game</title>
+    
+    <!-- Link to manifest.json -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple icon for iOS -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- PWA icon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+     <!-- ... rest of your HTML ... -->
+
+    <script src="script.js"></script>
+    
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+    <!-- Homepage/Main Menu -->
+    <div id="homepage" class="screen active">
+        <div class="container">
+            <div class="logo">
+                <h1>🎮 HANGMAN GAME</h1>
+                <p class="subtitle">Guess the word and save the hangman!</p>
+            </div>
+            
+            <div class="menu-buttons">
+                <button class="btn btn-primary" onclick="startGame()">Play Game</button>
+                <button class="btn btn-secondary" onclick="showTutorial()">How to Play</button>
+                <button class="btn btn-secondary" onclick="showSettings()">Settings</button>
+            </div>
+            
+            <div class="stats-display">
+                <h3>Your Stats</h3>
+                <p>Games Played: <span id="gamesPlayed">0</span></p>
+                <p>Games Won: <span id="gamesWon">0</span></p>
+                <p>Win Rate: <span id="winRate">0</span>%</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="screen">
+        <div class="close-btn" onclick="goHome()">✕</div>
+        
+        <div class="game-container">
+            <!-- Header -->
+            <div class="game-header">
+                <h2>Hangman Game</h2>
+                <div class="game-info">
+                    <span>Difficulty: <strong id="difficultyDisplay">Easy</strong></span>
+                    <span>Category: <strong id="categoryDisplay">Animals</strong></span>
+                </div>
+            </div>
+
+            <!-- Difficulty & Category Selector -->
+            <div id="setupPhase" class="setup-phase">
+                <div class="selector-group">
+                    <label for="difficultySelect">Select Difficulty:</label>
+                    <select id="difficultySelect" onchange="updateDifficulty()">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                        <option value="extreme">Extreme</option>
+                    </select>
+                </div>
+
+                <div class="selector-group">
+                    <label for="categorySelect">Select Category:</label>
+                    <select id="categorySelect" onchange="updateCategory()">
+                        <option value="animals">Animals</option>
+                        <option value="countries">Countries</option>
+                        <option value="fruits">Fruits</option>
+                        <option value="movies">Movies</option>
+                        <option value="technology">Technology</option>
+                        <option value="sports">Sports</option>
+                        <option value="colors">Colors</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" onclick="startRound()">Start Game</button>
+            </div>
+
+            <!-- Game Phase -->
+            <div id="gamePhase" class="game-phase" style="display: none;">
+                <!-- Hangman Drawing -->
+                <div class="hangman-section">
+                    <div class="hangman-drawing" id="hangmanDraw">
+                        <svg viewBox="0 0 200 250" class="hangman-svg">
+                            <line x1="20" y1="230" x2="180" y2="230" stroke="black" stroke-width="4"/>
+                            <line x1="50" y1="230" x2="50" y2="20" stroke="black" stroke-width="4"/>
+                            <line x1="50" y1="20" x2="130" y2="20" stroke="black" stroke-width="4"/>
+                            <line x1="130" y1="20" x2="130" y2="50" stroke="black" stroke-width="4"/>
+                            
+                            <!-- Head -->
+                            <circle id="head" cx="130" cy="70" r="20" stroke="black" stroke-width="4" fill="none" style="display: none;"/>
+                            
+                            <!-- Body -->
+                            <line id="body" x1="130" y1="90" x2="130" y2="150" stroke="black" stroke-width="4" style="display: none;"/>
+                            
+                            <!-- Left Arm -->
+                            <line id="leftArm" x1="130" y1="110" x2="100" y2="130" stroke="black" stroke-width="4" style="display: none;"/>
+                            
+                            <!-- Right Arm -->
+                            <line id="rightArm" x1="130" y1="110" x2="160" y2="130" stroke="black" stroke-width="4" style="display: none;"/>
+                            
+                            <!-- Left Leg -->
+                            <line id="leftLeg" x1="130" y1="150" x2="110" y2="190" stroke="black" stroke-width="4" style="display: none;"/>
+                            
+                            <!-- Right Leg -->
+                            <line id="rightLeg" x1="130" y1="150" x2="150" y2="190" stroke="black" stroke-width="4" style="display: none;"/>
+                        </svg>
+                    </div>
+                    <p class="wrong-count">Wrong Guesses: <span id="wrongCount">0</span>/<span id="maxWrong">6</span></p>
+                </div>
+
+                <!-- Word Display -->
+                <div class="word-display-section">
+                    <div class="word-display" id="wordDisplay">_ _ _ _ _</div>
+                    <p class="hint-text">Hint: <span id="hintText">Think about an animal...</span></p>
+                </div>
+
+                <!-- Hints & Tools -->
+                <div class="tools-section">
+                    <button class="btn btn-hint" onclick="useHint()" id="hintBtn">💡 Use Hint (2)</button>
+                    <button class="btn btn-reveal" onclick="revealLetter()" id="revealBtn">👁️ Reveal Letter (1)</button>
+                </div>
+
+                <!-- Alphabet Buttons -->
+                <div class="alphabet-section">
+                    <div class="letters-grid" id="lettersGrid">
+                        <!-- Generated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Wrong Letters Display -->
+                <div class="wrong-letters-section">
+                    <p>Wrong Letters: <span id="wrongLetters"></span></p>
+                </div>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="gameOverPhase" class="game-over-phase" style="display: none;">
+                <div class="game-over-content">
+                    <h2 id="gameOverTitle">Game Over!</h2>
+                    <p id="gameOverMessage">Better luck next time!</p>
+                    <div class="final-word">
+                        <p>The word was: <strong id="finalWord">EXAMPLE</strong></p>
+                    </div>
+                    <div class="game-over-stats">
+                        <p>Guesses Used: <span id="guessesUsed">5</span></p>
+                        <p>Hints Used: <span id="hintsUsed">0</span></p>
+                        <p>Category: <span id="finalCategory">Animals</span></p>
+                    </div>
+                    <div class="game-over-buttons">
+                        <button class="btn btn-primary" onclick="startRound()">Play Again</button>
+                        <button class="btn btn-secondary" onclick="goHome()">Back to Home</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Screen -->
+    <div id="tutorialScreen" class="screen">
+        <div class="close-btn" onclick="goHome()">✕</div>
+        <div class="tutorial-container">
+            <h1>How to Play Hangman</h1>
+            
+            <div class="tutorial-content">
+                <div class="tutorial-section">
+                    <h3>📖 Game Rules</h3>
+                    <ol>
+                        <li>The computer picks a secret word from your chosen category</li>
+                        <li>You have 6 wrong guesses before the game ends</li>
+                        <li>Click on letters to guess them</li>
+                        <li>Correct guesses reveal the letter in the word</li>
+                        <li>Wrong guesses add a body part to the hangman drawing</li>
+                    </ol>
+                </div>
+           <div class="tutorial-section">
+                    <h3>🎮 Game Features</h3>
+                    <ul>
+                        <li><strong>💡 Hints:</strong> Get helpful clues about the word (limited per game)</li>
+                        <li><strong>👁️ Reveal:</strong> Automatically reveal one letter (limited per game)</li>
+                        <li><strong>📊 Statistics:</strong> Track your wins, losses, and win rate</li>
+                    </ul>
+                </div>
+
+                <div class="tutorial-section">
+                    <h3>💡 Tips & Strategies</h3>
+                    <ul>
+                        <li>Start with common vowels (A, E, I, O, U)</li>
+                        <li>Save your hints for difficult words</li>
+                    </ul>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="goHome()">Back to Home</button>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settingsScreen" class="screen">
+        <div class="close-btn" onclick="goHome()">✕</div>
+        <div class="settings-container">
+            <h1>Settings</h1>
+            
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label for="soundToggle">Sound Effects:</label>
+                    <input type="checkbox" id="soundToggle" checked>
+                </div>
+
+                <div class="setting-item">
+                    <label for="musicToggle">Background Music:</label>
+                    <input type="checkbox" id="musicToggle" checked>
+                </div>
+
+                <div class="setting-item">
+                    <label for="themeSelect">Theme:</label>
+                    <select id="themeSelect" onchange="changeTheme()">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="ocean">Ocean</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-danger" onclick="resetStats()">Reset Stats</button>
+            </div>
+
+            <button class="btn btn-primary" onclick="goHome()">Back to Home</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
